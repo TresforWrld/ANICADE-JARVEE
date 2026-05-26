@@ -1,12 +1,16 @@
-/**
+ /**
  * ANICADE VISION - Core Application Logic
  * Powered by ANICADE TECH
  */
 
-// Global App State
-const savedKey = localStorage.getItem('anicade_gemini_key');
-// Obfuscated default key split into chunks
-const defaultKey = ['AIza', 'SyA6', '4p41', 'nz-O', 'hlfW', 'w_WH', 'ixKG', 'Gu77', 'Y8mF', 'ncc'].join('');
+// ========================================================
+// 🌌 ANICADE VISION - USER CONFIGURATION CORES
+// ========================================================
+const USER_CONFIG = {
+  geminiApiKey: '', // <-- Paste your Gemini API Key here (optional, offline OCR/Pollinations runs if empty)
+  jsonbinId: '',    // <-- Paste your JSONbin Bin ID here (optional)
+  jsonbinKey: ''    // <-- Paste your JSONbin Master Key here (optional)
+};
 
 const state = {
   isListening: false,
@@ -20,9 +24,9 @@ const state = {
   selectedLanguage: localStorage.getItem('anicade_selected_language') || 'en-GB',
   mediaStream: null,
   activeInputType: 'none', // 'screen', 'camera', 'image', 'none'
-  geminiApiKey: savedKey === 'none' ? '' : (savedKey || defaultKey),
-  jsonbinId: localStorage.getItem('anicade_jsonbin_id') || '',
-  jsonbinKey: localStorage.getItem('anicade_jsonbin_key') || '',
+  geminiApiKey: USER_CONFIG.geminiApiKey || localStorage.getItem('anicade_gemini_key') || '',
+  jsonbinId: USER_CONFIG.jsonbinId || localStorage.getItem('anicade_jsonbin_id') || '',
+  jsonbinKey: USER_CONFIG.jsonbinKey || localStorage.getItem('anicade_jsonbin_key') || '',
   schedules: [],
   connectedApps: JSON.parse(localStorage.getItem('anicade_connected_apps') || '{"calendar":true,"outlook":true,"whatsapp":false,"facebook":false,"tiktok":false}'),
   lastAISpokenText: '',
@@ -68,7 +72,6 @@ const elements = {
 
   // Voice Profile & Immersion toggles
   voiceSelect: document.getElementById('voiceSelect'),
-  langSelect: document.getElementById('langSelect'),
   btnToggleFullScreen: document.getElementById('btnToggleFullScreen'),
   btnToggleClap: document.getElementById('btnToggleClap'),
   clapStatusText: document.getElementById('clapStatusText'),
@@ -80,22 +83,20 @@ const elements = {
   fsVoiceStatus: document.getElementById('fsVoiceStatus'),
   fsVoiceSubstatus: document.getElementById('fsVoiceSubstatus'),
 
-  // API Config & Storage Sync
-  apiKeyInput: document.getElementById('apiKeyInput'),
-  btnSaveKey: document.getElementById('btnSaveKey'),
-  jsonbinIdInput: document.getElementById('jsonbinIdInput'),
-  jsonbinKeyInput: document.getElementById('jsonbinKeyInput'),
-  btnSaveSync: document.getElementById('btnSaveSync'),
-
   // Quick Tools & Notebook
   toolSchool: document.getElementById('toolSchool'),
   toolReply: document.getElementById('toolReply'),
   toolAdGen: document.getElementById('toolAdGen'),
-  toolAnimal: document.getElementById('toolAnimal'),
+  toolImageGen: document.getElementById('toolImageGen'),
   voiceTypingBox: document.getElementById('voiceTypingBox'),
   notebookStatus: document.getElementById('notebookStatus'),
   btnCopyNote: document.getElementById('btnCopyNote'),
   btnClearNote: document.getElementById('btnClearNote'),
+
+  // Direct Image Generation Input Group
+  imageGenInputGroup: document.getElementById('imageGenInputGroup'),
+  imageGenPromptInput: document.getElementById('imageGenPromptInput'),
+  btnTriggerImageGen: document.getElementById('btnTriggerImageGen'),
 
   // App integrations switches
   chkCalendar: document.getElementById('chkCalendar'),
@@ -104,17 +105,13 @@ const elements = {
   chkFacebook: document.getElementById('chkFacebook'),
   chkTikTok: document.getElementById('chkTikTok'),
 
-  // Animal Decoder actions
-  animalTypeSelect: document.getElementById('animalTypeSelect'),
-  btnDecodeAnimal: document.getElementById('btnDecodeAnimal'),
-
   // Scheduler lists
   scheduleList: document.getElementById('scheduleList'),
   schedTitle: document.getElementById('schedTitle'),
   schedTime: document.getElementById('schedTime'),
   btnAddSched: document.getElementById('btnAddSched'),
 
-  // Ad Output Layout
+  // Ad/Visual Output Layout
   adOutputContainer: document.getElementById('adOutputContainer'),
   adImage: document.getElementById('adImage'),
   btnDownloadAd: document.getElementById('btnDownloadAd')
