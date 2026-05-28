@@ -136,7 +136,7 @@ const state = {
 state.userName = localStorage.getItem('anicade_user_name') || USER_CONFIG.userName || 'Sir';
 state.clockVisible = localStorage.getItem('anicade_clock_visible') !== 'off';
 state.animationsEnabled = localStorage.getItem('anicade_animations') !== 'off';
-state.voiceMuted = localStorage.getItem('anicade_voice_muted') === 'true';
+state.voiceMuted = false;
 state.ttsRate = Number(localStorage.getItem('anicade_tts_rate') || USER_CONFIG.ttsRate || USER_CONFIG.TTS_RATE || 0.92);
 state.ttsPitch = Number(localStorage.getItem('anicade_tts_pitch') || USER_CONFIG.ttsPitch || USER_CONFIG.TTS_PITCH || 0.86);
 state.homeLocation = USER_CONFIG.homeLocation;
@@ -147,6 +147,7 @@ state.mapView = {
   routeFrom: '',
   routeTo: ''
 };
+state.pendingBootGreeting = '';
 
 let lastRetryAction = null;
 
@@ -156,6 +157,9 @@ const elements = {
   statusDot: document.getElementById('statusDot'),
   statusText: document.getElementById('statusText'),
   btnInstall: document.getElementById('btnInstall'),
+  neuralCoreCanvas: document.getElementById('neuralCoreCanvas'),
+  hudThroughput: document.getElementById('hudThroughput'),
+  hudRuntime: document.getElementById('hudRuntime'),
 
   // Visualizer Feed
   feedBox: document.getElementById('feedBox'),
@@ -306,6 +310,8 @@ window.addEventListener('DOMContentLoaded', () => {
   startVoiceVisualizer();
 
   updateStatusVisuals();
+  localStorage.removeItem('anicade_voice_muted');
+  state.voiceMuted = false;
   applyRuntimePreferences();
   setTimeout(() => welcomeGreeting(), 900);
 });
@@ -2111,14 +2117,12 @@ function handleVoiceSettingsCommand(cmd, lowerCmd) {
   }
   if (commandHasAny(intentCmd, ["mute yourself", "mute voice"])) {
     state.voiceMuted = true;
-    localStorage.setItem('anicade_voice_muted', 'true');
     cancelSpeech();
     addLog('system', 'Voice output muted.');
     return true;
   }
   if (commandHasAny(intentCmd, ["unmute", "unmute yourself", "resume voice"])) {
     state.voiceMuted = false;
-    localStorage.setItem('anicade_voice_muted', 'false');
     speakText(`Voice output restored, ${addressUser()}.`);
     return true;
   }
@@ -3934,6 +3938,7 @@ async function welcomeGreeting() {
   }
 
   localStorage.setItem('anicade_boot_greeting_date', today);
+  state.pendingBootGreeting = text;
   speakText(text);
   
   maybeAutoStartVoice();
@@ -4424,7 +4429,120 @@ async function handleMusicUpload(event) {
 function initAmbientEffects() {
   initBokehLayer();
   initStardustCanvas();
+  initNeuralCoreCanvas();
   initEmberLayer();
+}
+
+function initNeuralCoreCanvas() {
+  const canvas = elements.neuralCoreCanvas || document.getElementById('neuralCoreCanvas');
+  if (!canvas || canvas.dataset.ready) return;
+  canvas.dataset.ready = 'true';
+  const ctx = canvas.getContext('2d');
+  const particles = [];
+  const mouse = { x: null, y: null, radius: 150 };
+  const start = Date.now();
+
+  function resize() {
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+    particles.length = 0;
+    const count = Math.min(720, Math.max(260, Math.floor((canvas.width * canvas.height) / 2200)));
+    for (let i = 0; i < count; i++) {
+      const angle = Math.random() * Math.PI * 2;
+      const distance = 40 + Math.random() * Math.min(canvas.width, canvas.height) * 0.32;
+      particles.push({
+        x: canvas.width / 2 + Math.cos(angle) * distance,
+        y: canvas.height / 2 + Math.sin(angle) * distance,
+        baseX: canvas.width / 2 + Math.cos(angle) * distance,
+        baseY: canvas.height / 2 + Math.sin(angle) * distance,
+        size: Math.random() * 1.7 + 0.35,
+        density: Math.random() * 28 + 1,
+        phase: Math.random() * Math.PI * 2,
+        speed: Math.random() * 0.7 + 0.4
+      });
+    }
+  }
+
+  window.addEventListener('resize', resize);
+  window.addEventListener('mousemove', event => {
+    mouse.x = event.clientX;
+    mouse.y = event.clientY;
+  });
+  window.addEventListener('mouseleave', () => {
+    mouse.x = null;
+    mouse.y = null;
+  });
+  resize();
+
+  function animate() {
+    requestAnimationFrame(animate);
+    if (!state.particlesEnabled || !state.animationsEnabled) {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      return;
+    }
+    const energy = state.isSpeaking ? 1.9 : state.isAnalyzing ? 1.45 : state.isListening ? 1.35 : state.isStandby ? 0.55 : 0.85;
+    const now = Date.now();
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    const centerX = canvas.width / 2;
+    const centerY = canvas.height / 2;
+    const glow = ctx.createRadialGradient(centerX, centerY, 0, centerX, centerY, Math.min(canvas.width, canvas.height) * 0.34);
+    glow.addColorStop(0, `rgba(0, 218, 243, ${0.11 * energy})`);
+    glow.addColorStop(0.45, `rgba(0, 104, 237, ${0.045 * energy})`);
+    glow.addColorStop(1, 'rgba(0, 218, 243, 0)');
+    ctx.fillStyle = glow;
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    particles.forEach((particle, index) => {
+      particle.phase += 0.004 * particle.speed * energy;
+      const orbitX = Math.cos(particle.phase + index) * energy * 0.42;
+      const orbitY = Math.sin(particle.phase + index * 0.7) * energy * 0.42;
+      particle.x += (particle.baseX - particle.x) * 0.028 + orbitX;
+      particle.y += (particle.baseY - particle.y) * 0.028 + orbitY;
+      if (mouse.x !== null) {
+        const dx = mouse.x - particle.x;
+        const dy = mouse.y - particle.y;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+        if (distance < mouse.radius) {
+          const force = (mouse.radius - distance) / mouse.radius;
+          particle.x -= (dx / Math.max(distance, 1)) * force * particle.density;
+          particle.y -= (dy / Math.max(distance, 1)) * force * particle.density;
+        }
+      }
+      const alpha = state.isSpeaking ? 0.78 : state.isListening ? 0.7 : 0.42;
+      ctx.fillStyle = `rgba(195, 245, 255, ${alpha})`;
+      ctx.beginPath();
+      ctx.arc(particle.x, particle.y, particle.size * energy, 0, Math.PI * 2);
+      ctx.fill();
+    });
+
+    for (let i = 0; i < particles.length; i += 5) {
+      for (let j = i + 1; j < particles.length; j += 19) {
+        const dx = particles[i].x - particles[j].x;
+        const dy = particles[i].y - particles[j].y;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+        if (distance < 52) {
+          ctx.strokeStyle = `rgba(0, 218, 243, ${(1 - distance / 52) * 0.34})`;
+          ctx.lineWidth = 0.5;
+          ctx.beginPath();
+          ctx.moveTo(particles[i].x, particles[i].y);
+          ctx.lineTo(particles[j].x, particles[j].y);
+          ctx.stroke();
+        }
+      }
+    }
+
+    if (elements.hudRuntime) {
+      const elapsed = Math.floor((now - start) / 1000);
+      const h = String(Math.floor(elapsed / 3600)).padStart(2, '0');
+      const m = String(Math.floor((elapsed % 3600) / 60)).padStart(2, '0');
+      const s = String(elapsed % 60).padStart(2, '0');
+      elements.hudRuntime.textContent = `${h}:${m}:${s}`;
+    }
+    if (elements.hudThroughput) {
+      elements.hudThroughput.textContent = `${(91 + Math.random() * 7).toFixed(1)}%`;
+    }
+  }
+  animate();
 }
 
 function initFullscreenGalaxyParticles() {
@@ -5163,7 +5281,14 @@ async function decodeAnimalSound(animalType = "detect") {
 // EVENT LISTENERS BINDINGS
 // ==========================================
 function setupEventListeners() {
-  window.addEventListener('pointerdown', primeSpeechOutput, { once: true });
+  window.addEventListener('pointerdown', () => {
+    primeSpeechOutput();
+    if (state.pendingBootGreeting && !state.isSpeaking) {
+      const greeting = state.pendingBootGreeting;
+      state.pendingBootGreeting = '';
+      setTimeout(() => speakText(greeting), 120);
+    }
+  }, { once: true });
   window.addEventListener('keydown', primeSpeechOutput, { once: true });
 
   // Feed Inputs
