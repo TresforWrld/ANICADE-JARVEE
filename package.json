@@ -1,0 +1,18 @@
+{
+  "name": "anicade-jarvis",
+  "version": "2.1.0",
+  "private": true,
+  "description": "ANICADE JARVIS voice-first screen reader and installable PWA.",
+  "scripts": {
+    "start": "npx --yes http-server . -p 8000 -c-1",
+    "serve": "npx --yes http-server . -p 8000 -c-1"
+  },
+  "keywords": [
+    "pwa",
+    "voice-assistant",
+    "screen-reader",
+    "jarvis",
+    "anicade"
+  ],
+  "license": "UNLICENSED"
+}

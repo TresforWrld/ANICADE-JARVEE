@@ -1,0 +1,11 @@
+config.js
+.env
+.env.*
+node_modules/
+dist/
+build/
+.cache/
+artifacts/
+*.log
+Thumbs.db
+.DS_Store
