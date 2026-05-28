@@ -1,26 +1,45 @@
 // Copy this file to config.js for local development.
-// Keep config.js private. GitHub Pages can generate it from repository secrets.
+// Keep config.js private. Do not commit real API keys to GitHub.
 window.JARVIS_CONFIG = {
-  wakeWord: 'jarvis',
+  // Voice and personality
   WAKE_WORD: 'jarvis',
+  USER_NAME: 'Sir',
   language: 'en-GB',
+  locale: 'en-ZM',
   ttsRate: 1.05,
   ttsPitch: 0.92,
+  ttsVolume: 1,
+  showCaptions: false,
 
+  // AI models
   geminiModel: 'gemini-2.0-flash',
-  geminiApiKey: '',
   GEMINI_API_KEY: '',
+  GROQ_API_KEY: '',
+  COHERE_API_KEY: '',
+  POLLINATIONS_ENABLED: true,
 
-  claudeModel: 'claude-sonnet-4-20250514',
-  claudeApiKey: '',
-  CLAUDE_API_KEY: '',
-
-  googleClientId: '',
+  // Google services
   GOOGLE_CLIENT_ID: '',
-  facebookAppId: '',
   FACEBOOK_APP_ID: '',
 
-  jsonbinId: '',
-  jsonbinKey: '',
-  jsonbinAccessKey: ''
+  // Search
+  BRAVE_SEARCH_API_KEY: '',
+  SERPER_API_KEY: '',
+  DUCKDUCKGO_ENABLED: true,
+
+  // Weather and news
+  OPENWEATHER_API_KEY: '',
+  OPENWEATHER_API_KEY_2: '',
+  WEATHERAPI_KEY: '',
+  GNEWS_API_KEY: '',
+  NEWSAPI_KEY: '',
+
+  // Cloud sync
+  JSONBIN_BIN_ID: '',
+  JSONBIN_MASTER_KEY: '',
+  JSONBIN_ACCESS_KEY: '',
+
+  // Image and OCR
+  STABILITY_AI_KEY: '',
+  OCRSPACE_API_KEY: ''
 };
