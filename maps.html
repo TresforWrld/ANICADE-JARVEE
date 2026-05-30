@@ -1,0 +1,206 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ATLAS Google Maps Surface</title>
+  <style>
+    :root {
+      --primary: #00daf3;
+      --text: #dfe2eb;
+      --bg: #06101c;
+      --muted: rgba(223, 226, 235, 0.62);
+      --mono: "JetBrains Mono", Consolas, monospace;
+      --body: system-ui, sans-serif;
+    }
+
+    *,
+    *::before,
+    *::after {
+      box-sizing: border-box;
+      border: 0 !important;
+      outline: 0 !important;
+      letter-spacing: 0;
+    }
+
+    html,
+    body {
+      width: 100%;
+      height: 100%;
+      margin: 0;
+      overflow: hidden;
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--body);
+    }
+
+    .map-stage {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      background:
+        radial-gradient(circle at 50% 45%, rgba(0, 218, 243, 0.18), transparent 44%),
+        #06101c;
+    }
+
+    iframe {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      background: #06101c;
+      filter: saturate(1.05) contrast(1.04);
+    }
+
+    .overlay {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      background-image:
+        linear-gradient(rgba(0, 218, 243, 0.08) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0, 218, 243, 0.08) 1px, transparent 1px);
+      background-size: 46px 46px;
+      mix-blend-mode: screen;
+      opacity: 0.34;
+      animation: gridDrift 18s linear infinite;
+    }
+
+    .scan {
+      position: absolute;
+      inset: -60% 0;
+      pointer-events: none;
+      background: linear-gradient(to bottom, transparent, rgba(0, 218, 243, 0.22), transparent);
+      animation: sweep 1.2s ease both;
+      mix-blend-mode: screen;
+    }
+
+    .hud {
+      position: absolute;
+      left: 14px;
+      right: 14px;
+      bottom: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 10px 12px;
+      background: rgba(2, 6, 11, 0.72);
+      backdrop-filter: blur(12px);
+      border-radius: 8px;
+      font-family: var(--mono);
+      font-size: 11px;
+      pointer-events: none;
+    }
+
+    .hud strong {
+      color: var(--primary);
+      font-size: 12px;
+    }
+
+    .hud span {
+      color: var(--muted);
+    }
+
+    .mode-pill {
+      color: #001f24;
+      background: var(--primary);
+      border-radius: 999px;
+      padding: 5px 9px;
+    }
+
+    @keyframes sweep {
+      from { transform: translateY(-35%); opacity: 0; }
+      35% { opacity: 1; }
+      to { transform: translateY(35%); opacity: 0; }
+    }
+
+    @keyframes gridDrift {
+      to { background-position: 46px 46px; }
+    }
+  </style>
+</head>
+<body>
+  <main class="map-stage">
+    <iframe id="googleFrame" title="Google Maps embed" loading="eager" referrerpolicy="no-referrer-when-downgrade"></iframe>
+    <div class="overlay" aria-hidden="true"></div>
+    <div class="scan" aria-hidden="true"></div>
+    <div class="hud">
+      <div>
+        <span>ATLAS TARGET</span>
+        <strong id="targetLabel">Loading</strong>
+      </div>
+      <div class="mode-pill" id="modeLabel">ROADMAP</div>
+      <div>
+        <span>ZOOM</span>
+        <strong id="zoomLabel">12</strong>
+      </div>
+    </div>
+  </main>
+
+  <script>
+    const KNOWN_COORDINATES = new Map(Object.entries({
+      "london": "51.5074,-0.1278",
+      "london, united kingdom": "51.5074,-0.1278",
+      "new york": "40.7128,-74.0060",
+      "new york city": "40.7128,-74.0060",
+      "san francisco": "37.7749,-122.4194",
+      "tokyo": "35.6762,139.6503",
+      "paris": "48.8566,2.3522",
+      "lusaka": "-15.3875,28.3228",
+      "lusaka, zambia": "-15.3875,28.3228",
+      "ndola": "-12.9587,28.6366",
+      "ndola, zambia": "-12.9587,28.6366",
+      "kabwe": "-14.4469,28.4464",
+      "kabwe, zambia": "-14.4469,28.4464",
+      "livingstone": "-17.8419,25.8544",
+      "livingstone, zambia": "-17.8419,25.8544",
+      "kitwe": "-12.8024,28.2132",
+      "kitwe, zambia": "-12.8024,28.2132",
+      "cape town": "-33.9249,18.4241",
+      "dubai": "25.2048,55.2708"
+    }));
+
+    const params = new URLSearchParams(location.search);
+    const frame = document.getElementById("googleFrame");
+    const targetLabel = document.getElementById("targetLabel");
+    const modeLabel = document.getElementById("modeLabel");
+    const zoomLabel = document.getElementById("zoomLabel");
+
+    function parseRequest() {
+      return {
+        query: params.get("query") || "London, United Kingdom",
+        zoom: Math.max(3, Math.min(20, Number(params.get("zoom") || 12))),
+        mode: params.get("mode") || "roadmap"
+      };
+    }
+
+    function resolveTarget(query) {
+      const clean = String(query || "").trim();
+      const key = clean.toLowerCase();
+      if (/^-?\d+(\.\d+)?\s*,\s*-?\d+(\.\d+)?$/.test(clean)) return clean;
+      return KNOWN_COORDINATES.get(key) || clean;
+    }
+
+    function buildGoogleUrl(request) {
+      const target = resolveTarget(request.query);
+      const encoded = encodeURIComponent(target);
+      const z = encodeURIComponent(request.zoom);
+      const mode = String(request.mode || "roadmap").toLowerCase();
+      const satellite = mode === "satellite" ? "&t=k" : "";
+      const traffic = mode === "traffic" ? "&layer=t" : "";
+      return `https://maps.google.com/maps?q=${encoded}&z=${z}${satellite}${traffic}&output=embed`;
+    }
+
+    function render() {
+      const request = parseRequest();
+      targetLabel.textContent = request.query;
+      modeLabel.textContent = request.mode.toUpperCase();
+      zoomLabel.textContent = String(request.zoom);
+      frame.src = buildGoogleUrl(request);
+      window.parent.postMessage({ type: "map_ready", query: request.query, mode: request.mode }, "*");
+    }
+
+    render();
+  </script>
+</body>
+</html>
