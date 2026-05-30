@@ -2,7 +2,7 @@
 
 ANICADE JARVIS is a browser-based, voice-first command center for screen reading, camera analysis, maps, search, news, schematics, music, reminders, local memory, and generated visual concepts.
 
-The current build recreates `index.html` from the supplied A.E.G.I.S.-style neural core template and keeps the existing static app architecture: `index.html`, `styles.css`, `app.js`, `maps.html`, `schematics.html`, service worker, and local config.
+The current build recreates `index.html` from the supplied style neural core template and keeps the existing static app architecture: `index.html`, `styles.css`, `app.js`, `maps.html`, `schematics.html`, service worker, and local config.
 
 ## Quick Start
 
