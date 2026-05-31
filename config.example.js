@@ -12,7 +12,7 @@ window.JARVIS_CONFIG = {
   ttsPitch: 0.92,
   ttsVolume: 1,
   showCaptions: false,
-  STARTUP_SONG_URL: '',
+  STARTUP_SONG_URL: 'The_Clash_-_Should_I_Stay_or_Should_I_Go__Official_Video_(256k)',
 
   // AI models
   geminiModel: 'gemini-2.0-flash',
