@@ -1,0 +1,18 @@
+{
+  "name": "anicade-assistant",
+  "version": "2.1.0",
+  "private": true,
+  "description": "ANICADE voice-first screen reader and installable PWA.",
+  "scripts": {
+    "start": "node local-server.js 8000",
+    "serve": "node local-server.js 8000"
+  },
+  "keywords": [
+    "pwa",
+    "voice-assistant",
+    "screen-reader",
+    "assistant",
+    "anicade"
+  ],
+  "license": "UNLICENSED"
+}
