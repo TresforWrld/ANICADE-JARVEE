@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en" class="dark" data-theme="auto">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#05080c">
+  <title>Voice Assistant</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" href="assets/icon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="background-stack" aria-hidden="true">
+    <div class="space-image"></div>
+    <div class="grid-overlay"></div>
+    <div class="scanline-overlay"></div>
+    <canvas id="neuralCore" class="neural-core"></canvas>
+  </div>
+
+  <main class="voice-dashboard" aria-label="Continuous signal and telemetry dashboard">
+    <section class="dashboard-column signal-column" aria-label="Signal analysis">
+      <article class="hud-panel spectrum-panel">
+        <div class="panel-heading">
+          <span>SIGNAL SPECTRUM</span>
+          <strong id="spectrumPeak">-- DB</strong>
+        </div>
+        <canvas id="spectrumCanvas"></canvas>
+      </article>
+
+      <article class="hud-panel waveform-panel">
+        <div class="panel-heading">
+          <span>LIVE WAVEFORM</span>
+          <strong id="waveRms">-- RMS</strong>
+        </div>
+        <canvas id="waveformCanvas"></canvas>
+      </article>
+    </section>
+
+    <section class="core-zone" aria-label="Conversation and assistant state">
+      <div class="core-orbit">
+        <canvas id="brainCanvas" class="brain-canvas" aria-label="JARVIS virtual cognitive brain"></canvas>
+        <i></i>
+        <i></i>
+        <i></i>
+        <span></span>
+      </div>
+    </section>
+
+    <section class="dashboard-column biometric-column" aria-label="Simulated signal telemetry">
+      <article class="hud-panel vitals-panel">
+        <div class="panel-heading">
+          <span>SIGNAL TELEMETRY</span>
+          <strong id="heartRate">-- SIM</strong>
+        </div>
+        <div id="heartBars" class="bar-field" aria-hidden="true"></div>
+        <div class="metric-grid">
+          <div><span>THERMAL SIM</span><strong id="bodyTemp">-- C</strong></div>
+          <div><span>O2 SIM</span><strong id="oxygenSat">--%</strong></div>
+          <div><span>BREATH SIM</span><strong id="respRate">--/MIN</strong></div>
+          <div><span>GSR SIM</span><strong id="skinConductance">-- uS</strong></div>
+        </div>
+      </article>
+
+      <article class="hud-panel neural-panel">
+        <div class="panel-heading">
+          <span>NEURAL ACTIVITY</span>
+          <strong id="neuralLoad">--%</strong>
+        </div>
+        <canvas id="neuralTelemetryCanvas"></canvas>
+        <div class="metric-grid neural-metrics">
+          <div><span>ALPHA</span><strong id="alphaWave">-- HZ</strong></div>
+          <div><span>BETA</span><strong id="betaWave">-- HZ</strong></div>
+          <div><span>THETA</span><strong id="thetaWave">-- HZ</strong></div>
+          <div><span>COHERENCE</span><strong id="coherence">--%</strong></div>
+        </div>
+      </article>
+
+    </section>
+
+    <section id="surfaceLayer" class="surface-layer" aria-live="polite" hidden>
+      <div class="surface-frame">
+        <div class="surface-head">
+          <span id="surfaceType">MODULE</span>
+          <strong id="surfaceTitle">READY</strong>
+        </div>
+        <iframe id="surfaceFrame" title="Voice commanded module surface" loading="eager" referrerpolicy="no-referrer-when-downgrade" allow="camera; microphone; autoplay; fullscreen; clipboard-read; clipboard-write"></iframe>
+        <div id="surfaceContent" class="surface-content"></div>
+      </div>
+    </section>
+  </main>
+
+  <button id="themeToggle" class="theme-toggle" type="button" aria-label="Toggle color theme">Theme</button>
+  <div id="statusIndicator" class="status-indicator" role="status" aria-live="polite" hidden></div>
+
+  <section id="standbyClock" class="standby-clock" aria-hidden="true">
+    <strong id="standbyTime">00:00</strong>
+    <span id="standbyDate">System standby</span>
+  </section>
+
+  <script src="config.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
