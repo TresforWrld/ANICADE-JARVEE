@@ -37,16 +37,30 @@
         </div>
         <canvas id="waveformCanvas"></canvas>
       </article>
+
+      <article class="hud-panel frequency-panel">
+        <div class="panel-heading">
+          <span>FREQUENCY ANALYSIS</span>
+          <strong id="dominantHz">-- HZ</strong>
+        </div>
+        <canvas id="frequencyCanvas"></canvas>
+      </article>
     </section>
 
     <section class="core-zone" aria-label="Conversation and assistant state">
       <div class="core-orbit">
-        <canvas id="brainCanvas" class="brain-canvas" aria-label="JARVIS virtual cognitive brain"></canvas>
         <i></i>
         <i></i>
         <i></i>
         <span></span>
       </div>
+      <article id="conversationPanel" class="conversation-panel" aria-live="polite">
+        <div class="panel-heading">
+          <span>CONVERSATION</span>
+          <strong id="conversationState">READY</strong>
+        </div>
+        <div id="conversationLog" class="conversation-log"></div>
+      </article>
     </section>
 
     <section class="dashboard-column biometric-column" aria-label="Simulated signal telemetry">
@@ -78,6 +92,19 @@
         </div>
       </article>
 
+      <article class="hud-panel system-panel">
+        <div class="panel-heading">
+          <span>SYSTEM FUEL</span>
+          <strong id="systemMode">ACTIVE</strong>
+        </div>
+        <div class="metric-grid">
+          <div><span>UPLINK</span><strong id="bandwidthVal">-- GB/S</strong></div>
+          <div><span>LOSS</span><strong id="packetLoss">--%</strong></div>
+          <div><span>THERMAL</span><strong id="coreTemp">-- C</strong></div>
+          <div><span>ENTROPY</span><strong id="entropyVal">--</strong></div>
+        </div>
+        <div class="hex-stream" id="streamHex" aria-label="Live hexadecimal signal stream"></div>
+      </article>
     </section>
 
     <section id="surfaceLayer" class="surface-layer" aria-live="polite" hidden>
