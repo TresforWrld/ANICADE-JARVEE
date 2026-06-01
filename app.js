@@ -14,7 +14,7 @@ const USER_CONFIG = {
   language: RAW_ASSISTANT_CONFIG.language || RAW_ASSISTANT_CONFIG.LANGUAGE || "en-GB"
 };
 
-const STARTUP_INTRODUCTION = "Allow me to introduce myself, I am JARVIS, a virtual artificial intelligence and I'm here to assist you with a variety of tasks as best I can, 24 hours a day, 7 days a week, importing all preferences from home interface. Running system check. Systems are fully operational.";
+const STARTUP_INTRODUCTION = "Allow me to introduce myself, I am JARVIS, a virtual artificial intelligence and I'm here to assist you with a variety of tasks as best I can, 24 hours a day, seven days a week, importing all preferences from home interface. Running system check. Systems are fully operational.";
 const STARTUP_SONG_TITLE = "The_Clash_-_Should_I_Stay_or_Should_I_Go__Official_Video_(256k)";
 const STARTUP_SONG_QUERY = "Should I Stay or Should I Go The Clash";
 const STARTUP_SONG_ASSET = "The_Clash_-_Should_I_Stay_or_Should_I_Go__Official_Video_(256k).mp3";
