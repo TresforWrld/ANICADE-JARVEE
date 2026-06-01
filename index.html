@@ -37,7 +37,16 @@
         </div>
         <canvas id="waveformCanvas"></canvas>
       </article>
-      
+
+      <article class="hud-panel frequency-panel">
+        <div class="panel-heading">
+          <span>FREQUENCY ANALYSIS</span>
+          <strong id="dominantHz">-- HZ</strong>
+        </div>
+        <canvas id="frequencyCanvas"></canvas>
+      </article>
+    </section>
+
     <section class="core-zone" aria-label="Conversation and assistant state">
       <div class="core-orbit">
         <i></i>
@@ -47,8 +56,8 @@
       </div>
       <article id="conversationPanel" class="conversation-panel" aria-live="polite">
         <div class="panel-heading">
-          <span></span>
-          <strong id="conversationState"></strong>
+          <span>CONVERSATION</span>
+          <strong id="conversationState">READY</strong>
         </div>
         <div id="conversationLog" class="conversation-log"></div>
       </article>
@@ -82,6 +91,32 @@
           <div><span>COHERENCE</span><strong id="coherence">--%</strong></div>
         </div>
       </article>
+
+      <article class="hud-panel system-panel">
+        <div class="panel-heading">
+          <span>SYSTEM FUEL</span>
+          <strong id="systemMode">ACTIVE</strong>
+        </div>
+        <div class="metric-grid">
+          <div><span>UPLINK</span><strong id="bandwidthVal">-- GB/S</strong></div>
+          <div><span>LOSS</span><strong id="packetLoss">--%</strong></div>
+          <div><span>THERMAL</span><strong id="coreTemp">-- C</strong></div>
+          <div><span>ENTROPY</span><strong id="entropyVal">--</strong></div>
+        </div>
+        <div class="hex-stream" id="streamHex" aria-label="Live hexadecimal signal stream"></div>
+      </article>
+    </section>
+
+    <section id="surfaceLayer" class="surface-layer" aria-live="polite" hidden>
+      <div class="surface-frame">
+        <div class="surface-head">
+          <span id="surfaceType">MODULE</span>
+          <strong id="surfaceTitle">READY</strong>
+        </div>
+        <iframe id="surfaceFrame" title="Voice commanded module surface" loading="eager" referrerpolicy="no-referrer-when-downgrade" allow="camera; microphone; autoplay; fullscreen; clipboard-read; clipboard-write"></iframe>
+        <div id="surfaceContent" class="surface-content"></div>
+      </div>
+    </section>
   </main>
 
   <button id="themeToggle" class="theme-toggle" type="button" aria-label="Toggle color theme">Theme</button>
