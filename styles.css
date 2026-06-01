@@ -115,19 +115,16 @@ canvas {
   position: relative;
   z-index: 4;
   display: grid;
-  grid-template-columns: minmax(230px, 0.82fr) minmax(320px, 1.18fr) minmax(230px, 0.82fr);
+  grid-template-columns: minmax(280px, 0.86fr) minmax(300px, 1.1fr) minmax(280px, 0.86fr);
   gap: clamp(14px, 2vw, 26px);
-  width: 100%;
-  max-width: 80rem;
-  min-height: 100dvh;
-  margin: 0 auto;
+  min-height: 100vh;
   padding: clamp(14px, 2vw, 28px);
   overflow: hidden;
 }
 
 .dashboard-column {
   display: grid;
-  grid-template-rows: repeat(2, minmax(0, 1fr));
+  grid-template-rows: repeat(3, minmax(0, 1fr));
   gap: clamp(12px, 1.5vw, 18px);
   min-height: 0;
   min-width: 0;
@@ -196,14 +193,15 @@ canvas {
 }
 
 .spectrum-panel canvas,
-.waveform-panel canvas {
+.waveform-panel canvas,
+.frequency-panel canvas {
   height: calc(100% - 32px);
 }
 
 .core-zone {
   position: relative;
   display: grid;
-  grid-template-rows: minmax(0, 1fr);
+  grid-template-rows: 1fr minmax(150px, 0.42fr);
   align-items: center;
   min-width: 0;
   min-height: 0;
@@ -213,7 +211,7 @@ canvas {
 .core-orbit {
   position: relative;
   justify-self: center;
-  width: min(52vw, 560px);
+  width: min(54vw, 530px);
   max-height: 100%;
   aspect-ratio: 1;
   border-radius: 50%;
@@ -222,19 +220,61 @@ canvas {
   filter: none;
 }
 
-.brain-canvas {
-  position: absolute;
-  inset: 0;
+.conversation-panel {
+  align-self: stretch;
+  min-height: 0;
   width: 100%;
-  height: 100%;
-  border-radius: 50%;
-  filter: drop-shadow(0 0 32px rgba(0, 218, 243, 0.18));
+  padding: 14px;
+  overflow: hidden;
+  background:
+    linear-gradient(135deg, rgba(255, 183, 120, 0.1), transparent 34%),
+    linear-gradient(180deg, rgba(10, 18, 24, 0.72), rgba(1, 4, 8, 0.62));
+  border-radius: var(--radius);
+  box-shadow: 0 18px 70px rgba(0, 0, 0, 0.28);
+  backdrop-filter: blur(14px);
 }
 
+.conversation-log {
+  display: grid;
+  align-content: end;
+  gap: 8px;
+  height: calc(100% - 32px);
+  min-height: 0;
+  overflow: hidden;
+  font-family: var(--mono);
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.conversation-entry {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+  padding: 8px 10px;
+  background: rgba(1, 4, 8, 0.38);
+  border-radius: var(--radius);
+}
+
+.conversation-entry b {
+  color: var(--secondary);
+  font-size: 9px;
+}
+
+.conversation-entry span {
+  color: rgba(223, 231, 234, 0.84);
+  overflow-wrap: anywhere;
+}
+
+html[data-theme="light"] .conversation-panel,
 html[data-theme="light"] .hud-panel,
 html[data-theme="light"] .surface-frame,
+html[data-theme="light"] .conversation-entry,
 html[data-theme="light"] .metric-grid div {
   background-color: rgba(255, 255, 255, 0.72);
+}
+
+html[data-theme="light"] .conversation-entry span {
+  color: rgba(16, 32, 39, 0.84);
 }
 
 .core-orbit i,
@@ -629,30 +669,11 @@ body.assistant-speaking .core-orbit i {
 .theme-toggle {
   right: 14px;
   top: 14px;
-  display: grid;
-  width: 38px;
-  height: 38px;
-  place-items: center;
-  color: var(--primary);
-  background: rgba(1, 4, 8, 0.4);
-  box-shadow: inset 0 0 0 1px rgba(0, 218, 243, 0.22), 0 0 20px rgba(0, 218, 243, 0.08);
+  min-height: 34px;
+  padding: 0 10px;
+  color: var(--text);
+  background: rgba(1, 4, 8, 0.52);
   cursor: pointer;
-}
-
-.theme-toggle::before,
-.theme-toggle::after {
-  content: "";
-  position: absolute;
-  inset: 7px;
-  border: 1px solid rgba(0, 218, 243, 0.35);
-  border-radius: 50%;
-}
-
-.theme-toggle::after {
-  inset: 13px;
-  background: var(--secondary);
-  border: 0;
-  box-shadow: 0 0 10px rgba(199, 231, 109, 0.5);
 }
 
 .status-indicator {
@@ -757,17 +778,17 @@ body.core-hidden .neural-core {
   }
 
   .dashboard-column {
-    grid-template-rows: repeat(2, minmax(160px, 25vh));
+    grid-template-rows: repeat(3, minmax(174px, 27vh));
   }
 
   .core-zone {
-    grid-template-rows: minmax(230px, auto);
-    min-height: 260px;
+    grid-template-rows: minmax(210px, auto) minmax(150px, auto);
+    min-height: 238px;
     order: -1;
   }
 
   .core-orbit {
-    width: min(68vw, 340px);
+    width: min(50vw, 260px);
     opacity: 1;
   }
 }
@@ -778,7 +799,8 @@ body.core-hidden .neural-core {
     padding: 14px;
   }
 
-  .hud-panel {
+  .hud-panel,
+  .conversation-panel {
     padding: 11px;
   }
 
@@ -817,15 +839,15 @@ body.core-hidden .neural-core {
   }
 
   .dashboard-column {
-    grid-template-rows: repeat(2, minmax(154px, 26vh));
+    grid-template-rows: repeat(3, minmax(168px, 29vh));
   }
 
   .core-zone {
-    min-height: 235px;
+    min-height: 210px;
   }
 
   .core-orbit {
-    width: min(78vw, 275px);
+    width: min(58vw, 230px);
   }
 
   .metric-grid {
