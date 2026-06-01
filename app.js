@@ -10,11 +10,11 @@ const USER_CONFIG = {
   ...RAW_ASSISTANT_CONFIG,
   elevenLabsApiKey: RAW_ASSISTANT_CONFIG.elevenLabsApiKey || RAW_ASSISTANT_CONFIG.ELEVENLABS_API_KEY || "",
   elevenLabsVoiceId: RAW_ASSISTANT_CONFIG.elevenLabsVoiceId || RAW_ASSISTANT_CONFIG.ELEVENLABS_VOICE_ID || "",
-  userName: RAW_ASSISTANT_CONFIG.userName || RAW_ASSISTANT_CONFIG.USER_NAME || "",
+  userName: RAW_ASSISTANT_CONFIG.userName || RAW_ASSISTANT_CONFIG.USER_NAME || "sir",
   language: RAW_ASSISTANT_CONFIG.language || RAW_ASSISTANT_CONFIG.LANGUAGE || "en-GB"
 };
 
-const STARTUP_INTRODUCTION = "Allow me to introduce myself, I am JARVIS, a virtual artificial intelligence and I'm here to assist you with a variety of tasks as best I can, 24 hours a day, seven days a week, importing all preferences from home interface. Running system check. Systems are fully operational.";
+const STARTUP_INTRODUCTION = "Allow me to introduce myself, I am JARVIS, a virtual artificial intelligence and I'm here to assist you with a variety of tasks as best I can, 24 hours a day, importing all preferences from home interface. Running system check. Systems are fully operational.";
 const STARTUP_SONG_TITLE = "The_Clash_-_Should_I_Stay_or_Should_I_Go__Official_Video_(256k)";
 const STARTUP_SONG_QUERY = "Should I Stay or Should I Go The Clash";
 const STARTUP_SONG_ASSET = "The_Clash_-_Should_I_Stay_or_Should_I_Go__Official_Video_(256k).mp3";
@@ -131,7 +131,7 @@ const state = {
   },
   music: {
     audio: new Audio(),
-    volume: Number(localStorage.getItem("assistant_music_volume") || RAW_ASSISTANT_CONFIG.MUSIC_FULL_VOLUME || 0.55),
+    volume: Number(localStorage.getItem("assistant_music_volume") || RAW_ASSISTANT_CONFIG.MUSIC_FULL_VOLUME || 20.0),
     restoreVolume: null,
     ducked: false,
     fadeFrame: 0,
