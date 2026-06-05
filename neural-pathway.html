@@ -1,0 +1,757 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Neural Pathway — AI Knowledge Graph</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+
+  <style>
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body { width: 100%; height: 100%; background: #000; overflow: hidden; font-family: 'Space Mono', monospace; }
+    canvas { display: block; }
+    #app { position: fixed; inset: 0; }
+
+    /* ── HUD ── */
+    #hud {
+      position: fixed; top: 0; left: 0; right: 0;
+      padding: 22px 28px; display: flex; justify-content: space-between;
+      align-items: flex-start; pointer-events: none; z-index: 100;
+    }
+    #hud-title h1 {
+      font-size: 10px; font-weight: 400; color: rgba(0,229,204,0.65);
+      letter-spacing: 6px; text-transform: uppercase;
+    }
+    #hud-title p {
+      font-size: 8px; color: rgba(255,255,255,0.18);
+      letter-spacing: 2px; margin-top: 5px;
+    }
+    #hud-status {
+      display: flex; align-items: center; gap: 7px;
+    }
+    .status-dot {
+      width: 5px; height: 5px; border-radius: 50%;
+      background: #00e5cc;
+      box-shadow: 0 0 8px #00e5cc;
+      animation: pulse-dot 2s ease-in-out infinite;
+    }
+    @keyframes pulse-dot {
+      0%,100% { opacity: 1; } 50% { opacity: 0.3; }
+    }
+    .status-text { font-size: 8px; color: rgba(0,229,204,0.5); letter-spacing: 2px; text-transform: uppercase; }
+
+    /* ── Legend ── */
+    #legend { position: fixed; bottom: 24px; left: 28px; z-index: 100; pointer-events: none; }
+    .legend-item { display: flex; align-items: center; gap: 8px; margin-bottom: 7px; }
+    .legend-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+    .legend-text { font-size: 8px; color: rgba(255,255,255,0.3); letter-spacing: 2px; text-transform: uppercase; }
+
+    /* ── Hint ── */
+    #hint { position: fixed; bottom: 24px; right: 28px; z-index: 100; pointer-events: none; text-align: right; }
+    #hint p { font-size: 8px; color: rgba(255,255,255,0.16); letter-spacing: 1.5px; margin-bottom: 4px; }
+
+    /* ── Tooltip ── */
+    #tooltip {
+      position: fixed; display: none; z-index: 300; pointer-events: none;
+      background: rgba(0,4,10,0.92); border: 1px solid rgba(0,229,204,0.2);
+      border-radius: 3px; padding: 13px 16px; max-width: 220px;
+      backdrop-filter: blur(16px);
+      transition: opacity 0.15s;
+    }
+    .tt-label { font-size: 10px; font-weight: 700; letter-spacing: 2.5px; text-transform: uppercase; margin-bottom: 8px; }
+    .tt-detail { font-size: 9.5px; color: rgba(255,255,255,0.48); line-height: 1.65; margin-bottom: 11px; font-weight: 400; }
+    .tt-bar-track { height: 2px; background: rgba(255,255,255,0.07); border-radius: 1px; overflow: hidden; margin-bottom: 5px; }
+    .tt-bar-fill { height: 100%; border-radius: 1px; transition: width 0.3s; }
+    .tt-freshlabel { font-size: 8px; color: rgba(255,255,255,0.28); letter-spacing: 1.5px; text-transform: uppercase; }
+
+    /* ── CSS2D Node Labels ── */
+    .node-label {
+      font-family: 'Space Mono', monospace;
+      font-size: 8px; letter-spacing: 3px; text-transform: uppercase;
+      padding: 3px 9px; background: rgba(0,0,0,0.58);
+      border-radius: 2px; border-width: 1px; border-style: solid;
+      white-space: nowrap; pointer-events: none;
+      backdrop-filter: blur(8px);
+    }
+    .node-label-hub { font-size: 9.5px; letter-spacing: 5px; }
+  </style>
+
+  <script type="importmap">
+  {
+    "imports": {
+      "three":          "https://cdn.jsdelivr.net/npm/three@0.174.0/build/three.module.js",
+      "three/addons/":  "https://cdn.jsdelivr.net/npm/three@0.174.0/examples/jsm/"
+    }
+  }
+  </script>
+</head>
+<body>
+  <div id="app"></div>
+
+  <div id="hud">
+    <div id="hud-title">
+      <h1>Neural Pathway</h1>
+      <p>AI Knowledge Source Graph — Mock Data Active</p>
+    </div>
+    <div id="hud-status">
+      <div class="status-dot"></div>
+      <span class="status-text">Simulated</span>
+    </div>
+  </div>
+
+  <div id="legend"></div>
+
+  <div id="hint">
+    <p>Drag to orbit</p>
+    <p>Scroll to zoom</p>
+    <p>Hover to inspect</p>
+  </div>
+
+  <div id="tooltip">
+    <div class="tt-label"  id="tt-label">—</div>
+    <div class="tt-detail" id="tt-detail">—</div>
+    <div class="tt-bar-track"><div class="tt-bar-fill" id="tt-fill"></div></div>
+    <div class="tt-freshlabel" id="tt-fresh">Freshness —%</div>
+  </div>
+
+  <script type="module">
+    import * as THREE                         from 'three';
+    import { OrbitControls }                  from 'three/addons/controls/OrbitControls.js';
+    import { EffectComposer }                 from 'three/addons/postprocessing/EffectComposer.js';
+    import { RenderPass }                     from 'three/addons/postprocessing/RenderPass.js';
+    import { UnrealBloomPass }                from 'three/addons/postprocessing/UnrealBloomPass.js';
+    import { CSS2DRenderer, CSS2DObject }     from 'three/addons/renderers/CSS2DRenderer.js';
+
+    /* ════════════════════════════════════════════════════════
+       MOCK DATA
+       ─ Swap for:  const DATA = await fetch('/api/graph').then(r => r.json());
+    ════════════════════════════════════════════════════════ */
+    const DATA = {
+      nodes: [
+        { id:'hub',       type:'hub',      label:'Neural Core',    color:'#00e5cc', freshness:1.00, detail:'Central AI processing hub — all knowledge sources converge here.' },
+
+        { id:'cat_kb',    type:'category', label:'Knowledge Base', color:'#ff6b6b', freshness:0.95, detail:'Curated facts, articles, and reference documents.' },
+        { id:'cat_mem',   type:'category', label:'Memory Store',   color:'#a78bfa', freshness:0.88, detail:'Persistent conversation context and user preferences.' },
+        { id:'cat_tool',  type:'category', label:'Tool Suite',     color:'#fbbf24', freshness:0.92, detail:'Active APIs, plugins, and callable functions.' },
+        { id:'cat_web',   type:'category', label:'Live Web',       color:'#34d399', freshness:0.75, detail:'Real-time search index and scraped live content.' },
+        { id:'cat_reas',  type:'category', label:'Reasoning',      color:'#f97316', freshness:1.00, detail:'Chain-of-thought, logic chains, and inference engine.' },
+
+        { id:'lk1', type:'leaf', label:'Wikipedia',    color:'#ff6b6b', freshness:0.90, detail:'Encyclopedia snapshot — 6.7 M+ articles indexed.' },
+        { id:'lk2', type:'leaf', label:'ArXiv Papers', color:'#ff6b6b', freshness:0.80, detail:'Scientific preprints across all disciplines.' },
+        { id:'lk3', type:'leaf', label:'Code Repos',   color:'#ff6b6b', freshness:0.85, detail:'Open-source code from GitHub and GitLab.' },
+
+        { id:'lm1', type:'leaf', label:'User Profile', color:'#a78bfa', freshness:1.00, detail:'Name, preferences, and interaction history.' },
+        { id:'lm2', type:'leaf', label:'Session Log',  color:'#a78bfa', freshness:0.98, detail:'Current conversation thread — live.' },
+        { id:'lm3', type:'leaf', label:'Past Chats',   color:'#a78bfa', freshness:0.70, detail:'Summarised prior conversation records.' },
+
+        { id:'lt1', type:'leaf', label:'Web Search',   color:'#fbbf24', freshness:1.00, detail:'Real-time search via Bing and Google APIs.' },
+        { id:'lt2', type:'leaf', label:'Code Runner',  color:'#fbbf24', freshness:0.95, detail:'Sandboxed Python and JS execution environment.' },
+        { id:'lt3', type:'leaf', label:'Image Gen',    color:'#fbbf24', freshness:0.88, detail:'Diffusion-model image synthesis pipeline.' },
+
+        { id:'lw1', type:'leaf', label:'News Feed',    color:'#34d399', freshness:0.99, detail:'Aggregated headlines — updated every hour.' },
+        { id:'lw2', type:'leaf', label:'Social Pulse', color:'#34d399', freshness:0.60, detail:'Trending topics from major social platforms.' },
+        { id:'lw3', type:'leaf', label:'Market Data',  color:'#34d399', freshness:0.95, detail:'Financial and crypto prices — live feeds.' },
+
+        { id:'lr1', type:'leaf', label:'Logic Engine', color:'#f97316', freshness:1.00, detail:'First-order logic and constraint solving.' },
+        { id:'lr2', type:'leaf', label:'Math Core',    color:'#f97316', freshness:1.00, detail:'Symbolic math and numerical solvers.' },
+        { id:'lr3', type:'leaf', label:'Planner',      color:'#f97316', freshness:0.93, detail:'Multi-step planning and goal decomposition.' },
+      ],
+      edges: [
+        { source:'hub', target:'cat_kb'   },
+        { source:'hub', target:'cat_mem'  },
+        { source:'hub', target:'cat_tool' },
+        { source:'hub', target:'cat_web'  },
+        { source:'hub', target:'cat_reas' },
+        { source:'cat_kb',   target:'lk1' }, { source:'cat_kb',   target:'lk2' }, { source:'cat_kb',   target:'lk3' },
+        { source:'cat_mem',  target:'lm1' }, { source:'cat_mem',  target:'lm2' }, { source:'cat_mem',  target:'lm3' },
+        { source:'cat_tool', target:'lt1' }, { source:'cat_tool', target:'lt2' }, { source:'cat_tool', target:'lt3' },
+        { source:'cat_web',  target:'lw1' }, { source:'cat_web',  target:'lw2' }, { source:'cat_web',  target:'lw3' },
+        { source:'cat_reas', target:'lr1' }, { source:'cat_reas', target:'lr2' }, { source:'cat_reas', target:'lr3' },
+      ]
+    };
+
+    /* ════════════════════════════════════════════════════════
+       GLSL SHADERS
+    ════════════════════════════════════════════════════════ */
+
+    /* Node core — breathes on freshness, fresnel rim glow */
+    const NODE_VERT = /* glsl */`
+      uniform float uTime;
+      uniform float uFreshness;
+      varying vec3 vNormal;
+      varying vec3 vViewDir;
+      void main() {
+        float breathe = 1.0 + uFreshness * 0.07 * sin(uTime * 1.8);
+        vec3 pos = position * breathe;
+        vec4 mvPos = modelViewMatrix * vec4(pos, 1.0);
+        vViewDir  = normalize(-mvPos.xyz);
+        vNormal   = normalize(normalMatrix * normal);
+        gl_Position = projectionMatrix * mvPos;
+      }
+    `;
+    const NODE_FRAG = /* glsl */`
+      uniform vec3  uColor;
+      uniform float uTime;
+      uniform float uFreshness;
+      varying vec3 vNormal;
+      varying vec3 vViewDir;
+      void main() {
+        float rim   = pow(1.0 - max(dot(vNormal, vViewDir), 0.0), 2.3);
+        float pulse = 0.72 + 0.28 * uFreshness * (0.5 + 0.5 * sin(uTime * 2.1));
+        vec3  core  = uColor * pulse;
+        vec3  edge  = mix(uColor * 1.9, vec3(1.0), 0.3);
+        vec3  col   = mix(core, edge, rim * 0.78);
+        float spec  = pow(max(dot(vNormal, normalize(vViewDir + vec3(0.4,0.7,0.5))), 0.0), 20.0);
+        col += spec * 0.3;
+        col += uColor * 0.12;           /* ambient self-illuminate */
+        gl_FragColor = vec4(col, 1.0);
+      }
+    `;
+
+    /* Halo shell — visible only at rim (depth-occluded by core) */
+    const HALO_VERT = /* glsl */`
+      uniform float uTime;
+      varying vec3 vNormal;
+      varying vec3 vViewDir;
+      void main() {
+        float swell = 1.0 + 0.055 * sin(uTime * 1.35);
+        vec3 pos = position * swell;
+        vec4 mvPos = modelViewMatrix * vec4(pos, 1.0);
+        vViewDir = normalize(-mvPos.xyz);
+        vNormal  = normalize(normalMatrix * normal);
+        gl_Position = projectionMatrix * mvPos;
+      }
+    `;
+    const HALO_FRAG = /* glsl */`
+      uniform vec3  uColor;
+      uniform float uTime;
+      varying vec3 vNormal;
+      varying vec3 vViewDir;
+      void main() {
+        float rim   = 1.0 - max(dot(vNormal, vViewDir), 0.0);
+        rim = pow(rim, 1.25);
+        float pulse = 0.5 + 0.5 * (0.5 + 0.5 * sin(uTime * 1.6));
+        gl_FragColor = vec4(uColor, rim * 0.42 * pulse);
+      }
+    `;
+
+    /* Nebula — large BackSide sphere, FBM noise cloud */
+    const NEBULA_VERT = /* glsl */`
+      varying vec2 vUv;
+      void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }
+    `;
+    const NEBULA_FRAG = /* glsl */`
+      varying vec2 vUv;
+      float hash(vec2 p){ return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453123); }
+      float noise(vec2 p){
+        vec2 i=floor(p), f=fract(p); f=f*f*(3.0-2.0*f);
+        return mix(mix(hash(i),hash(i+vec2(1,0)),f.x),mix(hash(i+vec2(0,1)),hash(i+vec2(1,1)),f.x),f.y);
+      }
+      float fbm(vec2 p){ float v=0.,a=0.5; for(int i=0;i<6;i++){ v+=a*noise(p); p*=2.1; a*=0.48; } return v; }
+      void main(){
+        float n1=fbm(vUv*5.0);
+        float n2=fbm(vUv*8.0+vec2(3.7,1.2));
+        float n =n1*0.6+n2*0.4;
+        vec3 c1=vec3(0.0,0.10,0.22);
+        vec3 c2=vec3(0.09,0.0,0.16);
+        vec3 c3=vec3(0.0,0.06,0.04);
+        vec3 col=mix(c1,c2,smoothstep(0.3,0.7,n1));
+        col=mix(col,c3,smoothstep(0.4,0.8,n2)*0.35);
+        float a=clamp(n*0.26-0.02, 0.0, 0.24);
+        gl_FragColor=vec4(col,a);
+      }
+    `;
+
+    /* ════════════════════════════════════════════════════════
+       SCENE SETUP
+    ════════════════════════════════════════════════════════ */
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x000000);
+
+    const camera = new THREE.PerspectiveCamera(55, innerWidth / innerHeight, 0.1, 700);
+    camera.position.set(0, 9.5, 25);
+
+    /* WebGL renderer */
+    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+    renderer.setSize(innerWidth, innerHeight);
+    renderer.outputColorSpace = THREE.SRGBColorSpace;
+    renderer.toneMapping      = THREE.ReinhardToneMapping;
+    renderer.toneMappingExposure = 1.1;
+    document.getElementById('app').appendChild(renderer.domElement);
+
+    /* CSS2D label renderer */
+    const labelRenderer = new CSS2DRenderer();
+    labelRenderer.setSize(innerWidth, innerHeight);
+    Object.assign(labelRenderer.domElement.style, {
+      position:'fixed', top:'0', left:'0', pointerEvents:'none', zIndex:'10'
+    });
+    document.getElementById('app').appendChild(labelRenderer.domElement);
+
+    /* Orbit controls */
+    const controls = new OrbitControls(camera, renderer.domElement);
+    controls.enableDamping   = true;
+    controls.dampingFactor   = 0.04;
+    controls.autoRotate      = true;
+    controls.autoRotateSpeed = 0.35;
+    controls.minDistance     = 6;
+    controls.maxDistance     = 60;
+
+    /* Post-processing: bloom */
+    const composer   = new EffectComposer(renderer);
+    composer.addPass(new RenderPass(scene, camera));
+    const bloomPass  = new UnrealBloomPass(
+      new THREE.Vector2(innerWidth, innerHeight),
+      1.65, 0.45, 0.08
+    );
+    composer.addPass(bloomPass);
+
+    /* ════════════════════════════════════════════════════════
+       GRAPH STATE
+    ════════════════════════════════════════════════════════ */
+    const nodeMap     = {};    // id → state + THREE objects
+    const nodeMeshes  = [];    // raycaster targets
+    const edgeLines   = [];    // { geo, srcId, tgtId }
+    let edgeParticles = [];
+    let edgePosAttr   = null;
+
+    const AMBIENT     = [];    // { bx,by,bz, fx,fy,fz, px,py,pz, amp }
+    let ambientPos    = null;
+
+    /* ════════════════════════════════════════════════════════
+       BUILD GRAPH
+    ════════════════════════════════════════════════════════ */
+    function buildGraph({ nodes, edges }) {
+
+      /* 1 — index all nodes */
+      nodes.forEach(n => {
+        nodeMap[n.id] = {
+          ...n,
+          position:    new THREE.Vector3(),
+          mesh:null, halo:null,
+          orbitAngle:0, orbitRadius:0, orbitSpeed:0,
+          baseOffset:null, driftAxis:null, driftFreq:0, driftPhase:0, driftAmp:0,
+          parentId:null, ring1:null, ring2:null,
+        };
+      });
+
+      /* 2 — hub at origin */
+      nodeMap['hub'].position.set(0, 0, 0);
+
+      /* 3 — categories in ring */
+      const cats  = nodes.filter(n => n.type === 'category');
+      const CAT_R = 7.8;
+      cats.forEach((c, i) => {
+        const angle = (i / cats.length) * Math.PI * 2;
+        nodeMap[c.id].orbitAngle  = angle;
+        nodeMap[c.id].orbitRadius = CAT_R;
+        nodeMap[c.id].orbitSpeed  = 0.065 + i * 0.007;
+        nodeMap[c.id].position.set(CAT_R * Math.cos(angle), 0, CAT_R * Math.sin(angle));
+      });
+
+      /* 4 — map leaves → parent category via edges */
+      const leafParent = {};
+      edges.forEach(e => {
+        const s = nodeMap[e.source], t = nodeMap[e.target];
+        if (s && t && s.type === 'category' && t.type === 'leaf') leafParent[t.id] = s.id;
+      });
+
+      /* 5 — group leaves by category */
+      const catLeaves = {};
+      nodes.filter(n => n.type === 'leaf').forEach(leaf => {
+        const pid = leafParent[leaf.id];
+        if (!catLeaves[pid]) catLeaves[pid] = [];
+        catLeaves[pid].push(leaf.id);
+      });
+
+      /* 6 — Fibonacci sphere spread per category */
+      const LEAF_R = 3.6;
+      const golden = Math.PI * (3 - Math.sqrt(5));
+      Object.entries(catLeaves).forEach(([catId, leafIds]) => {
+        const total = leafIds.length;
+        leafIds.forEach((leafId, i) => {
+          const theta = golden * i;
+          const z     = 1 - (2 * i) / Math.max(total - 1, 1);
+          const rr    = Math.sqrt(Math.max(1 - z * z, 0));
+          const off   = new THREE.Vector3(rr * Math.cos(theta), z, rr * Math.sin(theta))
+                          .multiplyScalar(LEAF_R);
+          off.x += (Math.random() - 0.5) * 0.7;
+          off.y += (Math.random() - 0.5) * 1.0;
+          off.z += (Math.random() - 0.5) * 0.7;
+          const nd = nodeMap[leafId];
+          nd.parentId   = catId;
+          nd.baseOffset = off.clone();
+          nd.driftAxis  = new THREE.Vector3(Math.random()-0.5, 1, Math.random()-0.5).normalize();
+          nd.driftFreq  = 0.22 + Math.random() * 0.42;
+          nd.driftPhase = Math.random() * Math.PI * 2;
+          nd.driftAmp   = 0.18 + Math.random() * 0.30;
+          nd.position.copy(nodeMap[catId].position).add(off);
+        });
+      });
+
+      /* 7 — build meshes for every node */
+      nodes.forEach(n => {
+        const nd  = nodeMap[n.id];
+        const rad = n.type === 'hub' ? 0.90 : n.type === 'category' ? 0.50 : 0.22;
+        const col = new THREE.Color(n.color);
+
+        /* Core sphere — custom shader */
+        const coreMat = new THREE.ShaderMaterial({
+          uniforms: {
+            uColor:     { value: col },
+            uTime:      { value: 0  },
+            uFreshness: { value: n.freshness }
+          },
+          vertexShader:   NODE_VERT,
+          fragmentShader: NODE_FRAG,
+        });
+        const mesh = new THREE.Mesh(new THREE.SphereGeometry(rad, 36, 36), coreMat);
+        mesh.position.copy(nd.position);
+        mesh.userData.nodeId = n.id;
+        scene.add(mesh);
+        nd.mesh = mesh;
+        nodeMeshes.push(mesh);
+
+        /* Halo shell — translucent, additive, occluded by core = rim only */
+        const haloMat = new THREE.ShaderMaterial({
+          uniforms: { uColor: { value: col }, uTime: { value: 0 } },
+          vertexShader: HALO_VERT, fragmentShader: HALO_FRAG,
+          transparent: true, depthWrite: false,
+          blending: THREE.AdditiveBlending,
+        });
+        const halo = new THREE.Mesh(new THREE.SphereGeometry(rad * 2.25, 20, 20), haloMat);
+        halo.position.copy(nd.position);
+        scene.add(halo);
+        nd.halo = halo;
+
+        /* CSS2D Label — hub + categories only */
+        if (n.type === 'hub' || n.type === 'category') {
+          const div = document.createElement('div');
+          div.className = 'node-label' + (n.type === 'hub' ? ' node-label-hub' : '');
+          div.textContent = n.label;
+          div.style.color       = n.color;
+          div.style.borderColor = n.color + '50';
+          const obj = new CSS2DObject(div);
+          obj.position.set(0, rad * 2.8, 0);
+          mesh.add(obj);
+        }
+
+        /* Hub — decorative rotating rings */
+        if (n.type === 'hub') {
+          const ringGeo1 = new THREE.TorusGeometry(1.5, 0.018, 8, 90);
+          const ring1 = new THREE.Mesh(ringGeo1, new THREE.MeshBasicMaterial({
+            color: 0x00e5cc, transparent: true, opacity: 0.50,
+            blending: THREE.AdditiveBlending, depthWrite: false
+          }));
+          ring1.rotation.x = Math.PI / 2;
+          mesh.add(ring1);
+          nd.ring1 = ring1;
+
+          const ringGeo2 = new THREE.TorusGeometry(1.15, 0.012, 8, 70);
+          const ring2 = new THREE.Mesh(ringGeo2, new THREE.MeshBasicMaterial({
+            color: 0x00e5cc, transparent: true, opacity: 0.30,
+            blending: THREE.AdditiveBlending, depthWrite: false
+          }));
+          ring2.rotation.x = Math.PI / 3;
+          ring2.rotation.y = Math.PI / 6;
+          mesh.add(ring2);
+          nd.ring2 = ring2;
+        }
+      });
+
+      /* 8 — edge lines */
+      edges.forEach(e => {
+        const s = nodeMap[e.source], t = nodeMap[e.target];
+        if (!s || !t) return;
+        const edgeCol = s.type === 'hub' ? t.color : s.color;
+        const geo = new THREE.BufferGeometry().setFromPoints([
+          s.position.clone(), t.position.clone()
+        ]);
+        const mat = new THREE.LineBasicMaterial({
+          color: new THREE.Color(edgeCol),
+          transparent: true, opacity: 0.18,
+          blending: THREE.AdditiveBlending, depthWrite: false,
+        });
+        scene.add(new THREE.Line(geo, mat));
+        edgeLines.push({ geo, srcId: e.source, tgtId: e.target });
+      });
+
+      /* 9 — edge flow particles */
+      buildEdgeParticles(edges);
+    }
+
+    function buildEdgeParticles(edges) {
+      const PER  = 8;
+      const tot  = edges.length * PER;
+      const pos  = new Float32Array(tot * 3);
+      const col  = new Float32Array(tot * 3);
+
+      edgeParticles = [];
+      edges.forEach((e, ei) => {
+        const s = nodeMap[e.source], t = nodeMap[e.target];
+        if (!s || !t) return;
+        const c = new THREE.Color(s.type === 'hub' ? t.color : s.color);
+        for (let j = 0; j < PER; j++) {
+          const idx = ei * PER + j;
+          edgeParticles.push({
+            srcId: e.source, tgtId: e.target,
+            t:     j / PER,
+            speed: 0.16 + Math.random() * 0.14,
+            idx,
+          });
+          col[idx*3]   = c.r;
+          col[idx*3+1] = c.g;
+          col[idx*3+2] = c.b;
+        }
+      });
+
+      const geo    = new THREE.BufferGeometry();
+      edgePosAttr  = new THREE.BufferAttribute(pos, 3);
+      geo.setAttribute('position', edgePosAttr);
+      geo.setAttribute('color',    new THREE.BufferAttribute(col, 3));
+      scene.add(new THREE.Points(geo, new THREE.PointsMaterial({
+        size: 0.12, vertexColors: true,
+        transparent: true, opacity: 0.92,
+        blending: THREE.AdditiveBlending, depthWrite: false, sizeAttenuation: true,
+      })));
+    }
+
+    /* ════════════════════════════════════════════════════════
+       ENVIRONMENT
+    ════════════════════════════════════════════════════════ */
+    function buildStarfield() {
+      const N   = 2400;
+      const pos = new Float32Array(N * 3);
+      const col = new Float32Array(N * 3);
+      for (let i = 0; i < N; i++) {
+        const r     = 110 + Math.random() * 70;
+        const theta = Math.random() * Math.PI * 2;
+        const phi   = Math.acos(2 * Math.random() - 1);
+        pos[i*3]   = r * Math.sin(phi) * Math.cos(theta);
+        pos[i*3+1] = r * Math.sin(phi) * Math.sin(theta);
+        pos[i*3+2] = r * Math.cos(phi);
+        const t    = Math.random();
+        col[i*3]   = 0.65 + t * 0.35;
+        col[i*3+1] = 0.78 + t * 0.22;
+        col[i*3+2] = 1.0;
+      }
+      const geo = new THREE.BufferGeometry();
+      geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+      geo.setAttribute('color',    new THREE.BufferAttribute(col, 3));
+      scene.add(new THREE.Points(geo, new THREE.PointsMaterial({
+        size: 0.19, vertexColors: true,
+        transparent: true, opacity: 0.72, sizeAttenuation: true,
+      })));
+    }
+
+    function buildNebula() {
+      scene.add(new THREE.Mesh(
+        new THREE.SphereGeometry(95, 64, 64),
+        new THREE.ShaderMaterial({
+          vertexShader: NEBULA_VERT, fragmentShader: NEBULA_FRAG,
+          side: THREE.BackSide, transparent: true, depthWrite: false,
+          blending: THREE.AdditiveBlending,
+        })
+      ));
+    }
+
+    function buildAmbientParticles() {
+      const N   = 320;
+      const pos = new Float32Array(N * 3);
+      for (let i = 0; i < N; i++) {
+        const r   = 3 + Math.random() * 16;
+        const th  = Math.random() * Math.PI * 2;
+        const ph  = Math.acos(2 * Math.random() - 1);
+        const bx  = r * Math.sin(ph) * Math.cos(th);
+        const by  = r * Math.sin(ph) * Math.sin(th);
+        const bz  = r * Math.cos(ph);
+        pos[i*3]   = bx; pos[i*3+1] = by; pos[i*3+2] = bz;
+        AMBIENT.push({
+          bx, by, bz,
+          fx: 0.12 + Math.random() * 0.22,
+          fy: 0.10 + Math.random() * 0.20,
+          fz: 0.09 + Math.random() * 0.18,
+          px: Math.random() * Math.PI * 2,
+          py: Math.random() * Math.PI * 2,
+          pz: Math.random() * Math.PI * 2,
+          amp: 0.45 + Math.random() * 0.85,
+        });
+      }
+      const geo = new THREE.BufferGeometry();
+      ambientPos = new THREE.BufferAttribute(pos, 3);
+      geo.setAttribute('position', ambientPos);
+      scene.add(new THREE.Points(geo, new THREE.PointsMaterial({
+        color: 0x005577, size: 0.09,
+        transparent: true, opacity: 0.5,
+        blending: THREE.AdditiveBlending, depthWrite: false,
+      })));
+    }
+
+    /* ════════════════════════════════════════════════════════
+       LEGEND
+    ════════════════════════════════════════════════════════ */
+    function buildLegend({ nodes }) {
+      const el = document.getElementById('legend');
+      nodes.filter(n => n.type === 'category').forEach(n => {
+        const row = document.createElement('div');
+        row.className = 'legend-item';
+        row.innerHTML = `
+          <div class="legend-dot" style="background:${n.color};box-shadow:0 0 7px ${n.color}80"></div>
+          <span class="legend-text">${n.label}</span>
+        `;
+        el.appendChild(row);
+      });
+    }
+
+    /* ════════════════════════════════════════════════════════
+       INTERACTION
+    ════════════════════════════════════════════════════════ */
+    const raycaster = new THREE.Raycaster();
+    const mouse     = new THREE.Vector2(-9999, -9999);
+    let   mx = 0, my = 0;
+
+    const tooltip = document.getElementById('tooltip');
+    const ttLabel = document.getElementById('tt-label');
+    const ttDetail= document.getElementById('tt-detail');
+    const ttFill  = document.getElementById('tt-fill');
+    const ttFresh = document.getElementById('tt-fresh');
+
+    window.addEventListener('mousemove', e => {
+      mouse.x = (e.clientX / innerWidth)  *  2 - 1;
+      mouse.y = (e.clientY / innerHeight) * -2 + 1;
+      mx = e.clientX; my = e.clientY;
+    });
+    /* Clear on touch devices */
+    window.addEventListener('touchstart', () => { mouse.set(-9999,-9999); });
+
+    function checkHover() {
+      raycaster.setFromCamera(mouse, camera);
+      const hits = raycaster.intersectObjects(nodeMeshes);
+      if (hits.length > 0) {
+        const nd = nodeMap[hits[0].object.userData.nodeId];
+        if (nd) {
+          ttLabel.textContent      = nd.label;
+          ttLabel.style.color      = nd.color;
+          ttDetail.textContent     = nd.detail;
+          ttFill.style.width       = (nd.freshness * 100) + '%';
+          ttFill.style.background  = nd.color;
+          ttFresh.textContent      = `Freshness — ${Math.round(nd.freshness * 100)}%`;
+          const tx = Math.min(mx + 18, innerWidth  - 235);
+          const ty = Math.max(my - 12, 10);
+          tooltip.style.left       = tx + 'px';
+          tooltip.style.top        = ty + 'px';
+          tooltip.style.display    = 'block';
+          return;
+        }
+      }
+      tooltip.style.display = 'none';
+    }
+
+    /* ════════════════════════════════════════════════════════
+       ANIMATION LOOP
+    ════════════════════════════════════════════════════════ */
+    const clock = new THREE.Clock();
+
+    function animate() {
+      requestAnimationFrame(animate);
+      const dt   = Math.min(clock.getDelta(), 0.05);  // cap for tab-hidden safety
+      const time = clock.getElapsedTime();
+
+      /* Category orbits */
+      Object.values(nodeMap).filter(nd => nd.type === 'category').forEach(nd => {
+        nd.orbitAngle += nd.orbitSpeed * dt;
+        const x = nd.orbitRadius * Math.cos(nd.orbitAngle);
+        const z = nd.orbitRadius * Math.sin(nd.orbitAngle);
+        const y = Math.sin(nd.orbitAngle * 0.55) * 0.7;
+        nd.position.set(x, y, z);
+        nd.mesh.position.copy(nd.position);
+        nd.halo.position.copy(nd.position);
+      });
+
+      /* Leaf sin-wave drift relative to parent category */
+      Object.values(nodeMap).filter(nd => nd.type === 'leaf').forEach(nd => {
+        const catPos = nodeMap[nd.parentId].position;
+        const drift  = Math.sin(time * nd.driftFreq + nd.driftPhase) * nd.driftAmp;
+        nd.position.copy(catPos).add(nd.baseOffset)
+                   .addScaledVector(nd.driftAxis, drift);
+        nd.mesh.position.copy(nd.position);
+        nd.halo.position.copy(nd.position);
+      });
+
+      /* Shader uniforms — time */
+      Object.values(nodeMap).forEach(nd => {
+        nd.mesh.material.uniforms.uTime.value = time;
+        nd.halo.material.uniforms.uTime.value = time;
+      });
+
+      /* Hub decorative rings */
+      const hub = nodeMap['hub'];
+      if (hub.ring1) hub.ring1.rotation.z += dt * 0.38;
+      if (hub.ring2) hub.ring2.rotation.z -= dt * 0.24;
+
+      /* Edge line geometry updates */
+      edgeLines.forEach(el => {
+        const s = nodeMap[el.srcId].position;
+        const t = nodeMap[el.tgtId].position;
+        const pa = el.geo.attributes.position;
+        pa.setXYZ(0, s.x, s.y, s.z);
+        pa.setXYZ(1, t.x, t.y, t.z);
+        pa.needsUpdate = true;
+      });
+
+      /* Edge flow particles */
+      edgeParticles.forEach(p => {
+        p.t = (p.t + p.speed * dt) % 1.0;
+        const s = nodeMap[p.srcId].position;
+        const t = nodeMap[p.tgtId].position;
+        edgePosAttr.setXYZ(p.idx,
+          s.x + (t.x - s.x) * p.t,
+          s.y + (t.y - s.y) * p.t,
+          s.z + (t.z - s.z) * p.t,
+        );
+      });
+      if (edgePosAttr) edgePosAttr.needsUpdate = true;
+
+      /* Ambient drifting particles (sine-based, stable) */
+      AMBIENT.forEach((d, i) => {
+        ambientPos.setXYZ(i,
+          d.bx + Math.sin(time * d.fx + d.px) * d.amp,
+          d.by + Math.sin(time * d.fy + d.py) * d.amp,
+          d.bz + Math.sin(time * d.fz + d.pz) * d.amp,
+        );
+      });
+      if (ambientPos) ambientPos.needsUpdate = true;
+
+      checkHover();
+      controls.update();
+      composer.render();
+      labelRenderer.render(scene, camera);
+    }
+
+    /* ════════════════════════════════════════════════════════
+       RESIZE
+    ════════════════════════════════════════════════════════ */
+    window.addEventListener('resize', () => {
+      const W = innerWidth, H = innerHeight;
+      camera.aspect = W / H;
+      camera.updateProjectionMatrix();
+      renderer.setSize(W, H);
+      composer.setSize(W, H);
+      labelRenderer.setSize(W, H);
+      bloomPass.setSize(W, H);
+    });
+
+    /* ════════════════════════════════════════════════════════
+       INIT
+    ════════════════════════════════════════════════════════ */
+    buildGraph(DATA);
+    buildStarfield();
+    buildNebula();
+    buildAmbientParticles();
+    buildLegend(DATA);
+    animate();
+
+  </script>
+</body>
+</html>
